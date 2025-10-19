@@ -1,0 +1,189 @@
+--// Rayfield Loader
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+--// Window
+local Window = Rayfield:CreateWindow({
+	Name = "Alien Selector",
+	LoadingTitle = "Alien Menu",
+	LoadingSubtitle = "by ChatGPT",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = "AlienMenu",
+		FileName = "Settings"
+	}
+})
+
+local Tab = Window:CreateTab("Main", 4483362458)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AliensFolder = ReplicatedStorage:WaitForChild("Aliens")
+
+----------------------------------------------------------------
+-- 🧩 Lấy danh sách Model
+----------------------------------------------------------------
+local function getAllModels()
+	local list = {}
+	for _, subFolder in ipairs(AliensFolder:GetChildren()) do
+		if subFolder:IsA("Folder") then
+			for _, obj in ipairs(subFolder:GetChildren()) do
+				if obj:IsA("Model") then
+					table.insert(list, subFolder.Name .. "/" .. obj.Name)
+				end
+			end
+		end
+	end
+	if #list == 0 then
+		table.insert(list, "⚠️ Không tìm thấy model nào!")
+	end
+	return list
+end
+
+local allModels = getAllModels()
+local selectedModelPath = nil
+local dropdownRef
+local ignoreCallback = false
+local currentSearch = ""
+
+----------------------------------------------------------------
+-- 🧩 Hàm lọc danh sách theo từ khóa
+----------------------------------------------------------------
+local function filterModels(keyword)
+	if keyword == "" then return allModels end
+	local filtered = {}
+	for _, name in ipairs(allModels) do
+		if string.find(string.lower(name), string.lower(keyword)) then
+			table.insert(filtered, name)
+		end
+	end
+	if #filtered == 0 then
+		table.insert(filtered, "⚠️ Không tìm thấy kết quả phù hợp!")
+	end
+	return filtered
+end
+
+----------------------------------------------------------------
+-- 🧩 Textbox tìm kiếm nhanh
+----------------------------------------------------------------
+Tab:CreateInput({
+	Name = "🔍 Tìm nhanh (nhập tên Alien)",
+	PlaceholderText = "Nhập từ khóa như 'AlienX' hoặc 'GG'",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(keyword)
+		currentSearch = keyword or ""
+		local newList = filterModels(currentSearch)
+		ignoreCallback = true
+		pcall(function()
+			dropdownRef:Set(newList)
+		end)
+		ignoreCallback = false
+	end
+})
+
+----------------------------------------------------------------
+-- 🧩 Dropdown chọn Model
+----------------------------------------------------------------
+dropdownRef = Tab:CreateDropdown({
+	Name = "📜 Chọn Alien (Model)",
+	Options = allModels,
+	CurrentOption = nil,
+	Flag = "AlienDropdown",
+	Callback = function(option)
+		if ignoreCallback then return end
+
+		-- Rayfield mới trả về bảng → chỉ lấy chuỗi đầu
+		if typeof(option) == "table" then
+			option = option[1]
+		end
+
+		if type(option) ~= "string" or option:find("⚠️") then
+			selectedModelPath = nil
+			return
+		end
+
+		selectedModelPath = option
+		Rayfield:Notify({
+			Title = "Đã chọn Alien",
+			Content = "Model: " .. option,
+			Duration = 3
+		})
+	end
+})
+
+----------------------------------------------------------------
+-- 🧩 Nút làm mới toàn bộ danh sách
+----------------------------------------------------------------
+Tab:CreateButton({
+	Name = "🔄 Làm mới toàn bộ danh sách",
+	Callback = function()
+		allModels = getAllModels()
+		local newList = filterModels(currentSearch)
+		ignoreCallback = true
+		pcall(function()
+			dropdownRef:Set(newList)
+		end)
+		ignoreCallback = false
+		Rayfield:Notify({
+			Title = "Cập nhật xong!",
+			Content = "Danh sách Alien đã làm mới.",
+			Duration = 3
+		})
+	end
+})
+
+----------------------------------------------------------------
+-- 🧩 Lấy Model Instance từ "Folder/Model"
+----------------------------------------------------------------
+local function getModelFromPath(path)
+	local parts = string.split(path, "/")
+	if #parts ~= 2 then return nil end
+	local folder = AliensFolder:FindFirstChild(parts[1])
+	if not folder then return nil end
+	return folder:FindFirstChild(parts[2])
+end
+
+----------------------------------------------------------------
+-- 🧩 Nút Biến hình
+----------------------------------------------------------------
+Tab:CreateButton({
+	Name = "🛸 Biến hình!",
+	Callback = function()
+		if not selectedModelPath then
+			Rayfield:Notify({
+				Title = "Lỗi",
+				Content = "Bạn chưa chọn Model nào!",
+				Duration = 3
+			})
+			return
+		end
+
+		local model = getModelFromPath(selectedModelPath)
+		if not model then
+			Rayfield:Notify({
+				Title = "Không tìm thấy",
+				Content = selectedModelPath .. " không tồn tại!",
+				Duration = 3
+			})
+			return
+		end
+
+		local args = { model }
+		local ok, err = pcall(function()
+			ReplicatedStorage:WaitForChild("ChangeChar"):FireServer(unpack(args))
+		end)
+
+		if ok then
+			Rayfield:Notify({
+				Title = "✅ Thành công!",
+				Content = "Đã biến hình thành " .. selectedModelPath,
+				Duration = 4
+			})
+		else
+			warn("FireServer lỗi:", err)
+			Rayfield:Notify({
+				Title = "❌ Lỗi FireServer",
+				Content = "Không thể gửi lệnh!",
+				Duration = 4
+			})
+		end
+	end
+})
