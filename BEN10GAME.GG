@@ -3,9 +3,9 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 --// Window
 local Window = Rayfield:CreateWindow({
-	Name = "Alien Selector",
-	LoadingTitle = "Alien Menu",
-	LoadingSubtitle = "by Shadow",
+	Name = "Alien League Revival",
+	LoadingTitle = "Shadow hub",
+	LoadingSubtitle = "by ShadowDragonZ",
 	ConfigurationSaving = {
 		Enabled = true,
 		FolderName = "AlienMenu",
@@ -33,7 +33,7 @@ local function getAllModels()
 		end
 	end
 	if #list == 0 then
-		table.insert(list, "⚠️ Không tìm thấy model nào!")
+		table.insert(list, "⚠️No model found!")
 	end
 	return list
 end
@@ -56,7 +56,7 @@ local function filterModels(keyword)
 		end
 	end
 	if #filtered == 0 then
-		table.insert(filtered, "⚠️ Không tìm thấy kết quả phù hợp!")
+		table.insert(filtered, "⚠️No matching results found!")
 	end
 	return filtered
 end
@@ -65,8 +65,8 @@ end
 -- 🧩 Textbox tìm kiếm nhanh
 ----------------------------------------------------------------
 Tab:CreateInput({
-	Name = "🔍 Tìm nhanh (nhập tên Alien)",
-	PlaceholderText = "Nhập từ khóa như 'AlienX' hoặc 'GG'",
+	Name = "🔍search (error)",
+	PlaceholderText = "error'",
 	RemoveTextAfterFocusLost = false,
 	Callback = function(keyword)
 		currentSearch = keyword or ""
@@ -83,7 +83,7 @@ Tab:CreateInput({
 -- 🧩 Dropdown chọn Model
 ----------------------------------------------------------------
 dropdownRef = Tab:CreateDropdown({
-	Name = "📜 Chọn Alien (Model)",
+	Name = "📜 Select(Alien)",
 	Options = allModels,
 	CurrentOption = nil,
 	Flag = "AlienDropdown",
@@ -102,7 +102,7 @@ dropdownRef = Tab:CreateDropdown({
 
 		selectedModelPath = option
 		Rayfield:Notify({
-			Title = "Đã chọn Alien",
+			Title = "Selected Alien",
 			Content = "Model: " .. option,
 			Duration = 3
 		})
@@ -113,7 +113,7 @@ dropdownRef = Tab:CreateDropdown({
 -- 🧩 Nút làm mới toàn bộ danh sách
 ----------------------------------------------------------------
 Tab:CreateButton({
-	Name = "🔄 Làm mới toàn bộ danh sách",
+	Name = "🔄Refresh list",
 	Callback = function()
 		allModels = getAllModels()
 		local newList = filterModels(currentSearch)
@@ -123,8 +123,8 @@ Tab:CreateButton({
 		end)
 		ignoreCallback = false
 		Rayfield:Notify({
-			Title = "Cập nhật xong!",
-			Content = "Danh sách Alien đã làm mới.",
+			Title = "Update Success!",
+			Content = "List Update.",
 			Duration = 3
 		})
 	end
@@ -145,12 +145,12 @@ end
 -- 🧩 Nút Biến hình
 ----------------------------------------------------------------
 Tab:CreateButton({
-	Name = "🛸 Biến hình!",
+	Name = "🛸Transformation!",
 	Callback = function()
 		if not selectedModelPath then
 			Rayfield:Notify({
-				Title = "Lỗi",
-				Content = "Bạn chưa chọn Model nào!",
+				Title = "Error",
+				Content = "You have not selected a Model!",
 				Duration = 3
 			})
 			return
@@ -159,8 +159,8 @@ Tab:CreateButton({
 		local model = getModelFromPath(selectedModelPath)
 		if not model then
 			Rayfield:Notify({
-				Title = "Không tìm thấy",
-				Content = selectedModelPath .. " không tồn tại!",
+				Title = "Error",
+				Content = selectedModelPath .. "Error!",
 				Duration = 3
 			})
 			return
@@ -173,15 +173,15 @@ Tab:CreateButton({
 
 		if ok then
 			Rayfield:Notify({
-				Title = "✅ Thành công!",
-				Content = "Đã biến hình thành " .. selectedModelPath,
+				Title = "✅Success!",
+				Content = "Transformed into " .. selectedModelPath,
 				Duration = 4
 			})
 		else
 			warn("FireServer lỗi:", err)
 			Rayfield:Notify({
-				Title = "❌ Lỗi FireServer",
-				Content = "Không thể gửi lệnh!",
+				Title = "❌ Error FireServer",
+				Content = "Error!",
 				Duration = 4
 			})
 		end
