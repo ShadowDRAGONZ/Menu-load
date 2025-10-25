@@ -1,0 +1,24 @@
+
+
+local player = game:GetService("Players").LocalPlayer
+local bloodlineEvent = player:WaitForChild("PlayerGui")
+    :WaitForChild("Menu")
+    :WaitForChild("MainFrame")
+    :WaitForChild("Frames")
+    :WaitForChild("Bloodline")
+    :WaitForChild("ScrollingFrame")
+    :WaitForChild("Frame")
+    :WaitForChild("BloodlineEvent")
+
+
+local function fireWithDelay(arg, delayTime)
+	local args = {arg}
+	bloodlineEvent:FireServer(unpack(args))
+	task.wait(delayTime)
+end
+
+
+fireWithDelay("AF", 3)
+fireWithDelay("UAF", 3)
+fireWithDelay("OV", 3)
+fireWithDelay("Stabilizer", 0) -- lần cuối không cần đợi thêm
