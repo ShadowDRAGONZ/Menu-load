@@ -31,7 +31,7 @@ local function fireWithDelay(arg)
 	masEvent:FireServer("Mas", 1000)
 	
 	-- Đợi 1 giây trước khi sang lệnh tiếp theo
-	task.wait(1)
+	task.wait(7)
 end
 
 -- Thực thi tuần tự
