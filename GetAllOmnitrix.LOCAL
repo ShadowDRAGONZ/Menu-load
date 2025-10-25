@@ -1,24 +1,41 @@
-
+-- Script tuần tự gửi BloodlineEvent -> đợi 2s -> gửi Mas -> đợi 1s
 
 local player = game:GetService("Players").LocalPlayer
+
+-- Đường dẫn đến BloodlineEvent
 local bloodlineEvent = player:WaitForChild("PlayerGui")
-    :WaitForChild("Menu")
-    :WaitForChild("MainFrame")
-    :WaitForChild("Frames")
-    :WaitForChild("Bloodline")
-    :WaitForChild("ScrollingFrame")
-    :WaitForChild("Frame")
-    :WaitForChild("BloodlineEvent")
+	:WaitForChild("Menu")
+	:WaitForChild("MainFrame")
+	:WaitForChild("Frames")
+	:WaitForChild("Bloodline")
+	:WaitForChild("ScrollingFrame")
+	:WaitForChild("Frame")
+	:WaitForChild("BloodlineEvent")
 
+-- Đường dẫn đến RemoteEvent2
+local masEvent = player:WaitForChild("PlayerGui")
+	:WaitForChild("OSOmnitrix")
+	:WaitForChild("Frame")
+	:WaitForChild("OmnitrixTest")
+	:WaitForChild("RemoteEvent2")
 
-local function fireWithDelay(arg, delayTime)
-	local args = {arg}
-	bloodlineEvent:FireServer(unpack(args))
-	task.wait(delayTime)
+-- Hàm gửi tuần tự: Bloodline -> 2s -> Mas -> 1s
+local function fireWithDelay(arg)
+	-- Gửi BloodlineEvent
+	bloodlineEvent:FireServer(arg)
+	
+	-- Đợi 2 giây
+	task.wait(2)
+	
+	-- Gửi Mas
+	masEvent:FireServer("Mas", 1000)
+	
+	-- Đợi 1 giây trước khi sang lệnh tiếp theo
+	task.wait(1)
 end
 
-
-fireWithDelay("AF", 3)
-fireWithDelay("UAF", 3)
-fireWithDelay("OV", 3)
-fireWithDelay("Stabilizer", 0) -- lần cuối không cần đợi thêm
+-- Thực thi tuần tự
+fireWithDelay("AF")
+fireWithDelay("UAF")
+fireWithDelay("OV")
+fireWithDelay("Stabilizer")
