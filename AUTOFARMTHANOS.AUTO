@@ -1,4 +1,4 @@
-localocal-// UI AUTO NPC
+--// UI AUTO NPC
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Text = Instance.new("TextLabel", ScreenGui)
 
@@ -10,6 +10,8 @@ Text.TextScaled = true
 Text.Font = Enum.Font.GothamBlack
 Text.TextColor3 = Color3.new(1,0,0)
 Text.ZIndex = 999999
+Text.TextStrokeTransparency = 0.7
+Text.TextStrokeColor3 = Color3.new(0,0,0)
 
 --// Setup
 local player = game.Players.LocalPlayer
@@ -18,37 +20,73 @@ local hrp = char:WaitForChild("HumanoidRootPart")
 local EnemiesFolder = workspace:WaitForChild("Enemies")
 
 ---------------------------------------------------------------------
--- 🔥 1) AUTO TP TẤT CẢ NPC (tên có chữ “NPC”)
+-- 🔥 1) AUTO GET & EQUIP TOOL "The Casket"
 ---------------------------------------------------------------------
-task.spawn(function()
-    while task.wait() do
-        for _, mob in ipairs(EnemiesFolder:GetDescendants()) do
-            if mob:IsA("Model")
-            and mob:FindFirstChild("HumanoidRootPart")
-            and string.find(mob.Name:lower(), "npc") then
+local function AutoGetAndEquipTool()
+    local backpack = player:WaitForChild("Backpack")
 
-                local mobHRP = mob.HumanoidRootPart
-                local newPos = mobHRP.Position + Vector3.new(0, 6, 0) -- 6 stud trên đầu
+    -- Nếu chưa có tool trong backpack hoặc character
+    if not backpack:FindFirstChild("The Casket") 
+    and not (player.Character and player.Character:FindFirstChild("The Casket")) then
 
-                hrp.CFrame = CFrame.new(newPos)
+        -- Tìm đường dẫn chuẩn: workspace -> Spawn -> Classes -> Class10 -> Button
+        local spawnFolder = workspace:FindFirstChild("Spawn")
+        if spawnFolder then
+            local classesFolder = spawnFolder:FindFirstChild("Classes")
+            if classesFolder then
+                local class10 = classesFolder:FindFirstChild("Class10")
+                if class10 then
+                    local button = class10:FindFirstChild("Button")
+                    if button and button:FindFirstChild("ClickDetector") then
+                        fireclickdetector(button.ClickDetector)
+                        task.wait(0.5) -- delay tránh spam
+                    end
+                end
             end
         end
+    end
+
+    -- Trang bị tool nếu có trong backpack và chưa trang bị
+    local tool = backpack:FindFirstChild("The Casket")
+    if tool and tool.Parent ~= player.Character then
+        tool.Parent = player.Character
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.2) do
+        AutoGetAndEquipTool()
     end
 end)
 
 ---------------------------------------------------------------------
--- 🔥 2) SPAM FIRE REMOTE LIÊN TỤC
+-- 🔥 2) AUTO TP TẤT CẢ NPC LIÊN TỤC
 ---------------------------------------------------------------------
 task.spawn(function()
-    while task.wait() do
-        -- Chờ nhân vật có The Casket Remote
-        local c = player.Character or player.CharacterAdded:Wait()
-        local tool = c:FindFirstChild("The Casket")
+    while true do
+        for _, mob in ipairs(EnemiesFolder:GetDescendants()) do
+            if mob:IsA("Model") 
+            and mob:FindFirstChild("HumanoidRootPart") 
+            and mob.Name:lower():find("npc") then
 
-        if tool and tool:FindFirstChild("Remote") then
-            local args = {
-                Enum.KeyCode.E
-            }
+                local mobHRP = mob.HumanoidRootPart
+                hrp.CFrame = mobHRP.CFrame + Vector3.new(0,6,0)
+            end
+        end
+        task.wait() -- ~0s
+    end
+end)
+
+---------------------------------------------------------------------
+-- 🔥 3) SPAM FIRE REMOTE LIÊN TỤC
+---------------------------------------------------------------------
+task.spawn(function()
+    while task.wait(0.1) do
+        local character = player.Character or player.CharacterAdded:Wait()
+        local tool = character:FindFirstChild("The Casket")
+
+        if tool and tool.Parent == character and tool:FindFirstChild("Remote") then
+            local args = { Enum.KeyCode.E }
             tool.Remote:FireServer(unpack(args))
         end
     end
