@@ -1,4 +1,4 @@
---// UI AUTO NPC
+localocal-// UI AUTO NPC
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Text = Instance.new("TextLabel", ScreenGui)
 
