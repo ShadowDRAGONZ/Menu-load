@@ -1,0 +1,55 @@
+--// UI AUTO NPC
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Text = Instance.new("TextLabel", ScreenGui)
+
+Text.Size = UDim2.new(1,0,0,80)
+Text.Position = UDim2.new(0,0,0,0)
+Text.BackgroundTransparency = 1
+Text.Text = "AUTO NPC"
+Text.TextScaled = true
+Text.Font = Enum.Font.GothamBlack
+Text.TextColor3 = Color3.new(1,0,0)
+Text.ZIndex = 999999
+
+--// Setup
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local EnemiesFolder = workspace:WaitForChild("Enemies")
+
+---------------------------------------------------------------------
+-- 🔥 1) AUTO TP TẤT CẢ NPC (tên có chữ “NPC”)
+---------------------------------------------------------------------
+task.spawn(function()
+    while task.wait() do
+        for _, mob in ipairs(EnemiesFolder:GetDescendants()) do
+            if mob:IsA("Model")
+            and mob:FindFirstChild("HumanoidRootPart")
+            and string.find(mob.Name:lower(), "npc") then
+
+                local mobHRP = mob.HumanoidRootPart
+                local newPos = mobHRP.Position + Vector3.new(0, 6, 0) -- 6 stud trên đầu
+
+                hrp.CFrame = CFrame.new(newPos)
+            end
+        end
+    end
+end)
+
+---------------------------------------------------------------------
+-- 🔥 2) SPAM FIRE REMOTE LIÊN TỤC
+---------------------------------------------------------------------
+task.spawn(function()
+    while task.wait() do
+        -- Chờ nhân vật có The Casket Remote
+        local c = player.Character or player.CharacterAdded:Wait()
+        local tool = c:FindFirstChild("The Casket")
+
+        if tool and tool:FindFirstChild("Remote") then
+            local args = {
+                Enum.KeyCode.E
+            }
+            tool.Remote:FireServer(unpack(args))
+        end
+    end
+end)
