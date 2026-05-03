@@ -1,0 +1,352 @@
+-- // Rayfield Menu Script v2.5 - Lock Target
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+LocalPlayer.CharacterAdded:Connect(function(c)
+    Character = c
+    HumanoidRootPart = c:WaitForChild("HumanoidRootPart")
+end)
+
+local isFlyEnabled = false
+local isFlyNearestEnabled = false
+local isFaceDown = false
+local isNearestTPEnabled = false
+local selectedTarget = nil
+local flyOffset = 5
+
+local flyConn = nil
+local flyNearConn = nil
+local nearTPConn = nil
+
+local nearLabelRef = nil
+local offsetLabelRef = nil
+
+-- Lock target for nearest fly
+local lockedNearTarget = nil
+
+-- ============================================================
+local function getPlayerNames()
+    local names = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(names, p.Name) end
+    end
+    if #names == 0 then table.insert(names, "No players") end
+    return names
+end
+
+local function getNearestPlayer()
+    local nearest, minDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local hum = p.Character:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health > 0 then
+                local d = (HumanoidRootPart.Position - hrp.Position).Magnitude
+                if d < minDist then minDist = d nearest = p end
+            end
+        end
+    end
+    return nearest, minDist
+end
+
+local function isAlive(player)
+    if not player or not player.Character then return false end
+    local hum = player.Character:FindFirstChild("Humanoid")
+    return hum and hum.Health > 0
+end
+
+local function getDestCF(target)
+    if not target or not target.Character then return nil end
+    local head = target.Character:FindFirstChild("Head")
+    local hrp  = target.Character:FindFirstChild("HumanoidRootPart")
+    local base = head or hrp
+    if not base then return nil end
+    local destPos = base.Position + Vector3.new(0, flyOffset, 0)
+    if isFaceDown then
+        local flat = Vector3.new(base.Position.X, destPos.Y, base.Position.Z)
+        if (flat - destPos).Magnitude > 0.01 then
+            return CFrame.lookAt(destPos, flat) * CFrame.Angles(-math.pi / 2, 0, 0)
+        else
+            return CFrame.new(destPos) * CFrame.Angles(-math.pi / 2, 0, 0)
+        end
+    end
+    return CFrame.new(destPos)
+end
+
+-- ============================================================
+-- // FLY TO SELECTED PLAYER
+-- ============================================================
+local function startFly()
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+    if not selectedTarget then
+        Rayfield:Notify({ Title = "⚠️", Content = "Select a player in Main Tab!", Duration = 3 })
+        isFlyEnabled = false
+        return
+    end
+    Rayfield:Notify({ Title = "✈️ Fly Enabled", Content = "Following " .. selectedTarget.Name, Duration = 2 })
+    flyConn = RunService.Heartbeat:Connect(function()
+        if not isFlyEnabled then flyConn:Disconnect() flyConn = nil return end
+        local cf = getDestCF(selectedTarget)
+        if cf then HumanoidRootPart.CFrame = cf end
+    end)
+end
+
+local function stopFly()
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+    Rayfield:Notify({ Title = "🛬 Fly Disabled", Content = "", Duration = 2 })
+end
+
+-- ============================================================
+-- // FLY NEAREST PLAYER (LOCK TARGET)
+-- ============================================================
+local function startFlyNearest()
+    if flyNearConn then flyNearConn:Disconnect() flyNearConn = nil end
+    lockedNearTarget = nil
+    Rayfield:Notify({ Title = "✈️ Nearest Fly Enabled", Content = "Will lock target when found!", Duration = 2 })
+
+    flyNearConn = RunService.Heartbeat:Connect(function()
+        if not isFlyNearestEnabled then
+            flyNearConn:Disconnect() flyNearConn = nil
+            lockedNearTarget = nil
+            return
+        end
+
+        if lockedNearTarget and not isAlive(lockedNearTarget) then
+            Rayfield:Notify({ Title = "💀 Target Dead", Content = "Finding new nearest player...", Duration = 2 })
+            lockedNearTarget = nil
+        end
+
+        if not lockedNearTarget then
+            local nearest, dist = getNearestPlayer()
+            if nearest then
+                lockedNearTarget = nearest
+                if nearLabelRef then
+                    nearLabelRef:Set("🔒 Locked: " .. nearest.Name .. " | " .. math.floor(dist) .. " studs")
+                end
+                Rayfield:Notify({ Title = "🔒 Locked", Content = nearest.Name, Duration = 2 })
+            else
+                if nearLabelRef then nearLabelRef:Set("✈️ No players!") end
+                return
+            end
+        end
+
+        local cf = getDestCF(lockedNearTarget)
+        if cf then
+            HumanoidRootPart.CFrame = cf
+            if nearLabelRef and lockedNearTarget.Character then
+                local hrp = lockedNearTarget.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local d = math.floor((HumanoidRootPart.Position - hrp.Position).Magnitude)
+                    nearLabelRef:Set("🔒 Locked: " .. lockedNearTarget.Name .. " | " .. d .. " studs")
+                end
+            end
+        else
+            lockedNearTarget = nil
+        end
+    end)
+end
+
+local function stopFlyNearest()
+    if flyNearConn then flyNearConn:Disconnect() flyNearConn = nil end
+    lockedNearTarget = nil
+    if nearLabelRef then nearLabelRef:Set("✈️ Status: Disabled") end
+    Rayfield:Notify({ Title = "🛬 Nearest Fly Disabled", Content = "", Duration = 2 })
+end
+
+-- ============================================================
+-- // CONTINUOUS NEAREST TP
+-- ============================================================
+local function startNearestTP()
+    if nearTPConn then nearTPConn:Disconnect() nearTPConn = nil end
+    Rayfield:Notify({ Title = "🎯 Continuous TP", Content = "0s per frame!", Duration = 2 })
+    nearTPConn = RunService.Heartbeat:Connect(function()
+        if not isNearestTPEnabled then nearTPConn:Disconnect() nearTPConn = nil return end
+        local nearest = getNearestPlayer()
+        if nearest then
+            local cf = getDestCF(nearest)
+            if cf then HumanoidRootPart.CFrame = cf end
+        end
+    end)
+end
+
+local function stopNearestTP()
+    if nearTPConn then nearTPConn:Disconnect() nearTPConn = nil end
+    Rayfield:Notify({ Title = "⏹️ TP Disabled", Content = "", Duration = 2 })
+end
+
+-- ============================================================
+-- // WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name = "🎮 Shadow hub🥷",
+    LoadingTitle = "Loading...",
+    LoadingSubtitle = "v1 - Keyless",
+    ConfigurationSaving = { Enabled = false },
+    KeySystem = false,
+})
+
+local MainTab    = Window:CreateTab("🏠 Main", 4483362458)
+local PlayerTab  = Window:CreateTab("👤 Player", 4483362458)
+local NearTab    = Window:CreateTab("🎯 Nearest", 4483362458)
+local SettingTab = Window:CreateTab("⚙️ Settings", 4483362458)
+
+-- MAIN TAB
+MainTab:CreateSection("🎯 Select Target Player")
+
+local targetDropdown = MainTab:CreateDropdown({
+    Name = "Select Player",
+    Options = getPlayerNames(),
+    CurrentOption = {"Select player..."},
+    MultipleOptions = false,
+    Flag = "TargetPlayer",
+    Callback = function(selected)
+        selectedTarget = Players:FindFirstChild(selected[1])
+        if selectedTarget then
+            Rayfield:Notify({ Title = "✅ Selected", Content = selected[1], Duration = 2 })
+        end
+    end,
+})
+
+MainTab:CreateButton({
+    Name = "🔄 Refresh Player List",
+    Callback = function()
+        local list = getPlayerNames()
+        targetDropdown:Set(list[1] or "No players")
+        Rayfield:Notify({ Title = "🔄 Done!", Content = "", Duration = 2 })
+    end,
+})
+
+-- PLAYER TAB
+PlayerTab:CreateSection("⚙️ Fly Settings")
+
+PlayerTab:CreateToggle({
+    Name = "🔄 Rotate 90° Downward",
+    CurrentValue = false,
+    Flag = "FaceDown",
+    Callback = function(v)
+        isFaceDown = v
+        Rayfield:Notify({
+            Title = v and "🔄 Enabled 90°" or "↩️ Disabled 90°",
+            Content = v and "Looking downward while flying" or "Normal flight direction",
+            Duration = 2
+        })
+    end,
+})
+
+PlayerTab:CreateSection("✈️ Fly to Selected Player")
+
+PlayerTab:CreateToggle({
+    Name = "✈️ Fly Above Selected Player",
+    CurrentValue = false,
+    Flag = "FlySelect",
+    Callback = function(v)
+        isFlyEnabled = v
+        if v then startFly() else stopFly() end
+    end,
+})
+
+PlayerTab:CreateSection("⚡ One-time TP")
+
+PlayerTab:CreateButton({
+    Name = "📍 TP to Player Head",
+    Callback = function()
+        if not selectedTarget then
+            Rayfield:Notify({ Title = "⚠️", Content = "Select a player first!", Duration = 3 })
+            return
+        end
+        local cf = getDestCF(selectedTarget)
+        if cf then
+            HumanoidRootPart.CFrame = cf
+            Rayfield:Notify({ Title = "📍 TP Done!", Content = selectedTarget.Name, Duration = 2 })
+        end
+    end,
+})
+
+-- NEAREST TAB
+NearTab:CreateSection("✈️ Nearest Fly - Lock Target")
+NearTab:CreateLabel("🔒 Lock nearest player, only changes if target dies")
+NearTab:CreateLabel("💡 90° toggle in Player Tab also applies here")
+
+local nearestLabel = NearTab:CreateLabel("✈️ Status: Not Enabled")
+nearLabelRef = nearestLabel
+
+NearTab:CreateToggle({
+    Name = "✈️ Fly Above Nearest Player (Lock)",
+    CurrentValue = false,
+    Flag = "FlyNearest",
+    Callback = function(v)
+        isFlyNearestEnabled = v
+        if v then startFlyNearest() else stopFlyNearest() end
+    end,
+})
+
+NearTab:CreateSection("🎯 Continuous Nearest TP (No Lock)")
+
+NearTab:CreateToggle({
+    Name = "🔁 Follow Nearest Player (0s)",
+    CurrentValue = false,
+    Flag = "NearTP",
+    Callback = function(v)
+        isNearestTPEnabled = v
+        if v then startNearestTP() else stopNearestTP() end
+    end,
+})
+
+NearTab:CreateButton({
+    Name = "📍 TP to Nearest (Once)",
+    Callback = function()
+        local nearest, dist = getNearestPlayer()
+        if nearest then
+            local cf = getDestCF(nearest)
+            if cf then
+                HumanoidRootPart.CFrame = cf
+                nearestLabel:Set("📍 TP: " .. nearest.Name .. " | " .. math.floor(dist) .. " studs")
+                Rayfield:Notify({ Title = "📍 TP Done!", Content = nearest.Name .. " | " .. math.floor(dist) .. " studs", Duration = 3 })
+            end
+        else
+            Rayfield:Notify({ Title = "❌", Content = "No players!", Duration = 3 })
+        end
+    end,
+})
+
+-- SETTINGS TAB
+SettingTab:CreateSection("📏 Height Offset")
+
+local offsetLabel = SettingTab:CreateLabel("📏 Offset: 5 studs")
+offsetLabelRef = offsetLabel
+
+SettingTab:CreateSlider({
+    Name = "Offset above player",
+    Range = {0, 20},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = 5,
+    Flag = "Offset",
+    Callback = function(v)
+        flyOffset = v
+        offsetLabel:Set("📏 Offset: " .. v .. " studs")
+    end,
+})
+
+SettingTab:CreateLabel("0 = exactly on head")
+SettingTab:CreateLabel("5 = default")
+SettingTab:CreateLabel("10~20 = higher")
+
+SettingTab:CreateSection("ℹ️ Info")
+SettingTab:CreateLabel("v1 - auto skill soon...")
+SettingTab:CreateLabel("Auto TP v1")
+
+Rayfield:LoadConfiguration()
+
+Rayfield:Notify({
+    Title = "✅ v1 Ready!",
+    Content = "auto skill soon..",
+    Duration = 4,
+})
