@@ -3,7 +3,7 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 
 -- 2. Tạo Menu (Window)
 local Window = WindUI:CreateWindow({
-    Title = "Premium Hub",
+    Title = "Shadow Hub",
     Icon = "swords", -- Đã xoá lucide-
     Author = "Menu",
     Folder = "AutoFarm", 
