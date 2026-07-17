@@ -1,28 +1,79 @@
--- 1. Load thư viện Wind UI từ GitHub
+-- 1. Load Wind UI Library
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- 2. Tạo Menu (Window)
+-- 2. Create Menu (Window)
 local Window = WindUI:CreateWindow({
-    Title = "Shadow Hub",
-    Icon = "crown", 
+    Title = "Shadow Hub", 
+    Icon = "crown",       
     Author = "Menu",
-    Folder = "AutoFarm", 
+    Folder = "AutoFarm",
     Transparent = true
 })
 
 -- ============================================================
--- [TAB 1: AUTO] 
+-- STARTUP ACTIONS (Execution Count, Delete BubbleChat & Notification)
+-- ============================================================
+task.spawn(function()
+    pcall(function()
+        local rep = game:GetService("ReplicatedStorage")
+        local player = game:GetService("Players").LocalPlayer
+        
+        -- System for counting executions
+        local fileName = "ShadowHub_ExecutionCount.txt"
+        local runCount = 1
+        
+        pcall(function()
+            if isfile and isfile(fileName) then
+                local content = readfile(fileName)
+                local count = tonumber(content)
+                if count then
+                    runCount = count + 1
+                end
+            end
+            if writefile then
+                writefile(fileName, tostring(runCount))
+            end
+        end)
+        
+        -- Delete ForceBubbleChat
+        local forceBubbleChat = rep:FindFirstChild("HDAdminHDClient") 
+            and rep.HDAdminHDClient:FindFirstChild("Signals") 
+            and rep.HDAdminHDClient.Signals:FindFirstChild("ForceBubbleChat")
+        
+        if forceBubbleChat then
+            forceBubbleChat:Destroy()
+        end
+        
+        -- Send welcome notification (English)
+        local notifyEvent = rep:FindFirstChild("HDAdminHDClient")
+            and rep.HDAdminHDClient:FindFirstChild("Signals")
+            and rep.HDAdminHDClient.Signals:FindFirstChild("Error")
+            
+        if notifyEvent then
+            local playerName = player.Name
+            local welcomeMessage = string.format("👋 Hello %s, thank you for using Shadow Hub. This is the %d time you have used Shadow Hub! 👑✨", playerName, runCount)
+            
+            firesignal(notifyEvent.OnClientEvent, {
+                "System",
+                welcomeMessage
+            })
+        end
+    end)
+end)
+
+-- ============================================================
+-- [TAB 1: AUTO]
 -- ============================================================
 local AutoTab = Window:Tab({
     Title = "Auto",
-    Icon = "bot" 
+    Icon = "bot"
 })
 
 local autoClaimCoin = false
 
 AutoTab:Toggle({
     Title = "Auto Claim Coin",
-    Description = "Tự động kích hoạt prompt trong CoinGivers",
+    Description = "Automatically trigger prompts in CoinGivers",
     Default = false,
     Callback = function(state)
         autoClaimCoin = state
@@ -30,31 +81,31 @@ AutoTab:Toggle({
 })
 
 AutoTab:Button({
-    Title = "Get all item",
-    Description = "Lấy toàn bộ item từ ToolImageFolder (Ngoại trừ Classic Timebomb)",
+    Title = "Get all items",
+    Description = "Claim all items from ToolImageFolder (Except Classic Timebomb)",
     Callback = function()
         pcall(function()
             local toolFolder = game:GetService("ReplicatedStorage"):FindFirstChild("ToolImageFolder")
-            local Event = game:GetService("ReplicatedStorage").RemoteEvents.mapManagerRemote
-            
-            if toolFolder and Event then
-                for _, item in ipairs(toolFolder:GetChildren()) do
-                    if item:IsA("StringValue") and item.Name ~= "Classic Timebomb" then
-                        Event:FireServer("claimTool", item.Name)
-                        task.wait(0.05)
-                    end
-                end
-            end
-        end)
+            local Event = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents") and game:GetService("ReplicatedStorage").RemoteEvents:FindFirstChild("mapManagerRemote")
+
+            if toolFolder and Event then  
+                for _, item in ipairs(toolFolder:GetChildren()) do  
+                    if item:IsA("StringValue") and item.Name ~= "Classic Timebomb" then  
+                        Event:FireServer("claimTool", item.Name)  
+                        task.wait(0.05)  
+                    end  
+                end  
+            end  
+        end)  
     end
 })
 
 AutoTab:Button({
     Title = "Get Mod",
-    Description = "Chạy Event mua Admin Mod (Giá: 0)",
+    Description = "Fire Event to buy Admin Mod (Price: 0)",
     Callback = function()
         pcall(function()
-            local Event = game:GetService("ReplicatedStorage").RemoteEvents.mapManagerRemote
+            local Event = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents") and game:GetService("ReplicatedStorage").RemoteEvents:FindFirstChild("mapManagerRemote")
             if Event then
                 Event:FireServer("buyAdmin", "Mod", 0)
             end
@@ -63,66 +114,91 @@ AutoTab:Button({
 })
 
 -- ============================================================
--- [TAB 2: USE COMMAND (NO CHAT HIDDEN)]
+-- [TAB 2: USE COMMAND]
 -- ============================================================
 local CommandTab = Window:Tab({
-    Title = "Use command(no chat hidden)",
-    Icon = "shield-alert" 
+    Title = "Use command",
+    Icon = "shield-alert"
 })
 
-local commandPrefix = ";"
+local commandPrefix = "/"
 local textCommand = ""
 local textName = ""
 local textValue = ""
+local autoStartCommand = false
+local autoStartRunning = false
+
+local function runCommandOnce()
+    pcall(function()
+        local cmdStr = commandPrefix .. textCommand
+        if textName ~= "" then cmdStr = cmdStr .. " " .. textName end
+        if textValue ~= "" then cmdStr = cmdStr .. " " .. textValue end
+
+        local Event = game:GetService("ReplicatedStorage"):FindFirstChild("HDAdminHDClient")
+        if Event and Event:FindFirstChild("Signals") and Event.Signals:FindFirstChild("RequestCommand") then  
+            Event.Signals.RequestCommand:InvokeServer(cmdStr)  
+        end
+    end)
+end
 
 CommandTab:Input({
-    Title = "Prefix Command",
-    Value = ";", -- Mặc định là dấu chấm phẩy
+    Title = "Prefix",
+    Value = "/",
     Callback = function(val) commandPrefix = val end
 })
 
 CommandTab:Input({
-    Title = "Text Command",
+    Title = "Command",
     Value = "",
     Callback = function(val) textCommand = val end
 })
 
 CommandTab:Input({
-    Title = "Text Name",
+    Title = "Target Name",
     Value = "",
     Callback = function(val) textName = val end
 })
 
 CommandTab:Input({
-    Title = "Text Value",
+    Title = "Value",
     Value = "",
     Callback = function(val) textValue = val end
 })
 
 CommandTab:Button({
     Title = "Start",
-    Description = "Thực thi lệnh đơn lẻ cho người chơi ở ô Text Name",
+    Description = "Execute command once",
     Callback = function()
-        pcall(function()
-            -- Ghép Prefix với Command
-            local cmdStr = commandPrefix .. textCommand
-            if textName ~= "" then cmdStr = cmdStr .. " " .. textName end
-            if textValue ~= "" then cmdStr = cmdStr .. " " .. textValue end
-            
-            local Event = game:GetService("ReplicatedStorage").HDAdminHDClient.Signals.RequestCommandModification
-            if Event then
-                Event:InvokeServer(cmdStr)
-            end
-        end)
+        runCommandOnce()
+    end
+})
+
+CommandTab:Toggle({
+    Title = "Auto Start",
+    Description = "Automatically execute command every 2.5s",
+    Default = false,
+    Callback = function(state)
+        autoStartCommand = state
+        
+        if state and not autoStartRunning then
+            autoStartRunning = true
+            task.spawn(function()
+                while autoStartCommand do
+                    runCommandOnce()
+                    task.wait(2.5)
+                end
+                autoStartRunning = false
+            end)
+        end
     end
 })
 
 -- ============================================================
--- [TAB 3: TROLL] 
+-- [TAB 3: TROLL]
 -- ============================================================
 local TrollTab = Window:Tab({
     Title = "Troll",
-    Icon = "bomb" 
+    Icon = "bomb"
 })
 
 local autoBomb = false
@@ -131,7 +207,7 @@ local autoTouchDisappearParts = false
 
 TrollTab:Toggle({
     Title = "Auto Bomb",
-    Description = "Tự lấy bom, equip nhanh và TP tới sau lưng người chơi 2 stud",
+    Description = "Auto get bomb, equip and teleport 2 studs behind players",
     Default = false,
     Callback = function(state)
         autoBomb = state
@@ -139,8 +215,8 @@ TrollTab:Toggle({
 })
 
 TrollTab:Toggle({
-    Title = "Auto button troll",
-    Description = "Tự động chạm (Touch) TẤT CẢ nút Troll cùng lúc",
+    Title = "Auto Troll Buttons",
+    Description = "Automatically touch ALL troll buttons at once",
     Default = false,
     Callback = function(state)
         autoButtonTroll = state
@@ -149,7 +225,7 @@ TrollTab:Toggle({
 
 TrollTab:Toggle({
     Title = "Auto Touch DisappearParts",
-    Description = "Tự động chạm tất cả part trong DisappearParts cùng lúc",
+    Description = "Automatically touch all parts in DisappearParts",
     Default = false,
     Callback = function(state)
         autoTouchDisappearParts = state
@@ -157,27 +233,27 @@ TrollTab:Toggle({
 })
 
 -- ============================================================
--- [TAB 4: PLAYER] 
+-- [TAB 4: PLAYER]
 -- ============================================================
 local PlayerTab = Window:Tab({
     Title = "Player",
-    Icon = "user" 
+    Icon = "user"
 })
 
 local walkSpeedValue = 16
 local autoSpeed = false
 
 PlayerTab:Input({
-    Title = "Speed",
+    Title = "Walk Speed",
     Value = "16",
-    Callback = function(val) 
-        walkSpeedValue = tonumber(val) or 16 
+    Callback = function(val)
+        walkSpeedValue = tonumber(val) or 16
     end
 })
 
 PlayerTab:Toggle({
     Title = "Auto set speed",
-    Description = "Tự động khoá tốc độ chạy",
+    Description = "Lock your walk speed",
     Default = false,
     Callback = function(state)
         autoSpeed = state
@@ -190,14 +266,14 @@ local autoJumpPower = false
 PlayerTab:Input({
     Title = "Jump Power",
     Value = "50",
-    Callback = function(val) 
-        jumpPowerValue = tonumber(val) or 50 
+    Callback = function(val)
+        jumpPowerValue = tonumber(val) or 50
     end
 })
 
 PlayerTab:Toggle({
     Title = "Auto set jump power",
-    Description = "Tự động khoá lực nhảy",
+    Description = "Lock your jump power",
     Default = false,
     Callback = function(state)
         autoJumpPower = state
@@ -207,8 +283,8 @@ PlayerTab:Toggle({
 local infiniteJump = false
 
 PlayerTab:Toggle({
-    Title = "Infiniti Jump",
-    Description = "Nhảy vô hạn trên không",
+    Title = "Infinite Jump",
+    Description = "Jump continuously in the air",
     Default = false,
     Callback = function(state)
         infiniteJump = state
@@ -230,144 +306,91 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
 end)
 
 -- ============================================================
--- VÒNG LẶP CHẠY NGẦM (BACKGROUND LOOPS)
+-- BACKGROUND LOOPS
 -- ============================================================
-
 task.spawn(function()
     while task.wait(0.1) do
-        
-        -- Logic Player: Auto Set Speed / Auto Set Jump Power
-        if autoSpeed or autoJumpPower then
-            pcall(function()
-                local player = game.Players.LocalPlayer
-                if player and player.Character then
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        if autoSpeed then
-                            humanoid.WalkSpeed = walkSpeedValue
-                        end
-                        if autoJumpPower then
-                            humanoid.UseJumpPower = true
-                            humanoid.JumpPower = jumpPowerValue
-                        end
-                    end
-                end
-            end)
-        end
-        
-        -- Logic Auto Coin
-        if autoClaimCoin then
-            pcall(function()
-                local givers = workspace:FindFirstChild("Givers")
-                if givers and givers:FindFirstChild("CoinGivers") then
-                    for _, model in ipairs(givers.CoinGivers:GetChildren()) do
-                        if model:IsA("Model") and model:FindFirstChild("ClaimCoin") then
-                            for _, item in ipairs(model.ClaimCoin:GetDescendants()) do
-                                if item:IsA("ProximityPrompt") then
-                                    fireproximityprompt(item)
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-        
-        -- Logic Auto Bomb
-        if autoBomb then
-            pcall(function()
-                local Event = game:GetService("ReplicatedStorage").RemoteEvents.mapManagerRemote
-                local LocalPlayer = game.Players.LocalPlayer
-                
-                if Event and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local backpack = LocalPlayer:FindFirstChild("Backpack")
-                    local hasMyBomb = false
-                    
-                    if backpack and backpack:FindFirstChild("Classic Timebomb") then
-                        hasMyBomb = true
-                    elseif LocalPlayer.Character:FindFirstChild("Classic Timebomb") then
-                        hasMyBomb = true
-                    end
-                    
-                    if not hasMyBomb then
-                        Event:FireServer("claimTool", "Classic Timebomb")
-                    end
-                    
-                    if backpack then
-                        local bomb = backpack:FindFirstChild("Classic Timebomb")
-                        if bomb then
-                            bomb.Parent = LocalPlayer.Character
-                        end
-                    end
-                    
-                    for _, player in ipairs(game.Players:GetPlayers()) do
-                        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                            local targetHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                            
-                            if targetHumanoid and targetHumanoid.Health > 0 then
-                                local hasTargetBomb = (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Classic Timebomb")) or player.Character:FindFirstChild("Classic Timebomb")
-                                
-                                if not hasTargetBomb and autoBomb then
-                                    local targetHRP = player.Character.HumanoidRootPart
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2)
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-        
-        -- Logic Auto Button Troll
-        if autoButtonTroll then
-            pcall(function()
-                local trollButtons = workspace:FindFirstChild("TrollButtons")
-                local LocalPlayer = game.Players.LocalPlayer
-                
-                if trollButtons and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = LocalPlayer.Character.HumanoidRootPart
-                    
-                    for _, buttonModel in ipairs(trollButtons:GetChildren()) do
-                        if buttonModel:IsA("Model") and (buttonModel.Name == "Button" or buttonModel.Name == "button") then
-                            task.spawn(function()
-                                for _, childPart in ipairs(buttonModel:GetChildren()) do
-                                    if childPart:IsA("BasePart") and (childPart:FindFirstChildWhichIsA("TouchTransmitter") or childPart:FindFirstChild("TouchInterest")) then
-                                        firetouchinterest(hrp, childPart, 0)
-                                        firetouchinterest(hrp, childPart, 1)
-                                        break 
-                                    end
-                                end
-                            end)
-                        end
-                    end
-                end
-            end)
-        end
-        
-        -- Logic Auto Touch DisappearParts
-        if autoTouchDisappearParts then
-            pcall(function()
-                local gearTower = workspace:FindFirstChild("Gear Troll Tower 2")
-                if gearTower then
-                    local disappearFolder = gearTower:FindFirstChild("DisappearParts")
-                    local LocalPlayer = game.Players.LocalPlayer
-                    
-                    if disappearFolder and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local hrp = LocalPlayer.Character.HumanoidRootPart
-                        
-                        for _, childPart in ipairs(disappearFolder:GetChildren()) do
-                            task.spawn(function()
-                                if childPart:IsA("BasePart") and (childPart:FindFirstChildWhichIsA("TouchTransmitter") or childPart:FindFirstChild("TouchInterest")) then
-                                    firetouchinterest(hrp, childPart, 0)
-                                    firetouchinterest(hrp, childPart, 1)
-                                end
-                            end)
-                        end
-                    end
-                end
-            end)
-        end
-        
+        -- (Logic giữ nguyên không thay đổi)
+        if autoSpeed or autoJumpPower then  
+            pcall(function()  
+                local player = game.Players.LocalPlayer  
+                if player and player.Character then  
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")  
+                    if humanoid then  
+                        if autoSpeed then humanoid.WalkSpeed = walkSpeedValue end  
+                        if autoJumpPower then humanoid.UseJumpPower = true; humanoid.JumpPower = jumpPowerValue end  
+                    end  
+                end  
+            end)  
+        end  
+        if autoClaimCoin then  
+            pcall(function()  
+                local givers = workspace:FindFirstChild("Givers")  
+                if givers and givers:FindFirstChild("CoinGivers") then  
+                    for _, model in ipairs(givers.CoinGivers:GetChildren()) do  
+                        if model:IsA("Model") and model:FindFirstChild("ClaimCoin") then  
+                            for _, item in ipairs(model.ClaimCoin:GetDescendants()) do  
+                                if item:IsA("ProximityPrompt") then fireproximityprompt(item) end  
+                            end  
+                        end  
+                    end  
+                end  
+            end)  
+        end  
+        if autoBomb then  
+            pcall(function()  
+                local Event = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents") and game:GetService("ReplicatedStorage").RemoteEvents:FindFirstChild("mapManagerRemote")
+                local LocalPlayer = game.Players.LocalPlayer  
+                if Event and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then  
+                    local backpack = LocalPlayer:FindFirstChild("Backpack")  
+                    local hasMyBomb = (backpack and backpack:FindFirstChild("Classic Timebomb")) or LocalPlayer.Character:FindFirstChild("Classic Timebomb")
+                    if not hasMyBomb then Event:FireServer("claimTool", "Classic Timebomb") end  
+                    if backpack then local b = backpack:FindFirstChild("Classic Timebomb") if b then b.Parent = LocalPlayer.Character end end  
+                    for _, p in ipairs(game.Players:GetPlayers()) do  
+                        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then  
+                            local h = p.Character:FindFirstChildOfClass("Humanoid")  
+                            if h and h.Health > 0 then  
+                                local hasTargetBomb = (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Classic Timebomb")) or p.Character:FindFirstChild("Classic Timebomb")  
+                                if not hasTargetBomb then LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2); break end  
+                            end  
+                        end  
+                    end  
+                end  
+            end)  
+        end  
+        if autoButtonTroll then  
+            pcall(function()  
+                local trollButtons = workspace:FindFirstChild("TrollButtons")  
+                local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if trollButtons and hrp then  
+                    for _, m in ipairs(trollButtons:GetChildren()) do  
+                        if m:IsA("Model") and (m.Name == "Button" or m.Name == "button") then  
+                            task.spawn(function()  
+                                for _, p in ipairs(m:GetChildren()) do  
+                                    if p:IsA("BasePart") and (p:FindFirstChildWhichIsA("TouchTransmitter") or p:FindFirstChild("TouchInterest")) then  
+                                        firetouchinterest(hrp, p, 0); firetouchinterest(hrp, p, 1); break  
+                                    end  
+                                end  
+                            end)  
+                        end  
+                    end  
+                end  
+            end)  
+        end  
+        if autoTouchDisappearParts then  
+            pcall(function()  
+                local gearTower = workspace:FindFirstChild("Gear Troll Tower 2")  
+                local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if gearTower and gearTower:FindFirstChild("DisappearParts") and hrp then  
+                    for _, p in ipairs(gearTower.DisappearParts:GetChildren()) do  
+                        task.spawn(function()  
+                            if p:IsA("BasePart") and (p:FindFirstChildWhichIsA("TouchTransmitter") or p:FindFirstChild("TouchInterest")) then  
+                                firetouchinterest(hrp, p, 0); firetouchinterest(hrp, p, 1)  
+                            end  
+                        end)  
+                    end  
+                end  
+            end)  
+        end  
     end
 end)
