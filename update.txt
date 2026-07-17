@@ -4,18 +4,17 @@
   "entries": [
     {
       "id": "update-1",
-      "title": "New Command",
-      "version": "1.0",
+      "title": "Update use command (tab)",
+      "version": "1.1",
       "date": "2026-07-17",
-      "summary": "Added a new command system.",
+      "summary": "Added Auto Start and fixed the Use Command tab not working.",
       "description": "This update adds a new command system with better control and cleaner UI.",
       "status": "Completed",
       "features": [
-        "Command menu improved",
-        "New UI layout",
-        "More stable loading"
+        "Fix bugs",
+        "Added Auto Start"
       ],
-      "notes": "Click the card to see the full details."
+      "notes": "idk"
     }
   ]
 }
