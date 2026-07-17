@@ -1,3 +1,4 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ShadowDRAGONZ/Menu-load/refs/heads/main/GearSlapTower.UpdateLog"))()
 -- 1. Load Wind UI Library
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
