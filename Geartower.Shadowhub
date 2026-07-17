@@ -4,7 +4,7 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- 2. Tạo Menu (Window)
 local Window = WindUI:CreateWindow({
     Title = "Shadow Hub",
-    Icon = "swords", 
+    Icon = "crown", 
     Author = "Menu",
     Folder = "AutoFarm", 
     Transparent = true
@@ -70,9 +70,16 @@ local CommandTab = Window:Tab({
     Icon = "shield-alert" 
 })
 
+local commandPrefix = ";"
 local textCommand = ""
 local textName = ""
 local textValue = ""
+
+CommandTab:Input({
+    Title = "Prefix (Dấu lệnh)",
+    Value = ";", -- Mặc định là dấu chấm phẩy
+    Callback = function(val) commandPrefix = val end
+})
 
 CommandTab:Input({
     Title = "Text Command",
@@ -97,7 +104,8 @@ CommandTab:Button({
     Description = "Thực thi lệnh đơn lẻ cho người chơi ở ô Text Name",
     Callback = function()
         pcall(function()
-            local cmdStr = ";" .. textCommand
+            -- Ghép Prefix với Command
+            local cmdStr = commandPrefix .. textCommand
             if textName ~= "" then cmdStr = cmdStr .. " " .. textName end
             if textValue ~= "" then cmdStr = cmdStr .. " " .. textValue end
             
@@ -119,10 +127,11 @@ local TrollTab = Window:Tab({
 
 local autoBomb = false
 local autoButtonTroll = false
+local autoTouchDisappearParts = false
 
 TrollTab:Toggle({
     Title = "Auto Bomb",
-    Description = "Tự lấy bom, equip nhanh và TP tới người chơi",
+    Description = "Tự lấy bom, equip nhanh và TP tới sau lưng người chơi 2 stud",
     Default = false,
     Callback = function(state)
         autoBomb = state
@@ -135,6 +144,15 @@ TrollTab:Toggle({
     Default = false,
     Callback = function(state)
         autoButtonTroll = state
+    end
+})
+
+TrollTab:Toggle({
+    Title = "Auto Touch DisappearParts",
+    Description = "Tự động chạm tất cả part trong DisappearParts cùng lúc",
+    Default = false,
+    Callback = function(state)
+        autoTouchDisappearParts = state
     end
 })
 
@@ -284,11 +302,16 @@ task.spawn(function()
                     
                     for _, player in ipairs(game.Players:GetPlayers()) do
                         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                            local hasTargetBomb = (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Classic Timebomb")) or player.Character:FindFirstChild("Classic Timebomb")
+                            local targetHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
                             
-                            if not hasTargetBomb and autoBomb then
-                                LocalPlayer.Character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame
-                                break
+                            if targetHumanoid and targetHumanoid.Health > 0 then
+                                local hasTargetBomb = (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Classic Timebomb")) or player.Character:FindFirstChild("Classic Timebomb")
+                                
+                                if not hasTargetBomb and autoBomb then
+                                    local targetHRP = player.Character.HumanoidRootPart
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2)
+                                    break
+                                end
                             end
                         end
                     end
@@ -296,7 +319,7 @@ task.spawn(function()
             end)
         end
         
-        -- Logic Auto Button Troll (Chạm chính xác Part có TouchTransmitter)
+        -- Logic Auto Button Troll
         if autoButtonTroll then
             pcall(function()
                 local trollButtons = workspace:FindFirstChild("TrollButtons")
@@ -307,24 +330,39 @@ task.spawn(function()
                     
                     for _, buttonModel in ipairs(trollButtons:GetChildren()) do
                         if buttonModel:IsA("Model") and (buttonModel.Name == "Button" or buttonModel.Name == "button") then
-                            
                             task.spawn(function()
-                                -- Duyệt qua từng con (children) trong model Button
                                 for _, childPart in ipairs(buttonModel:GetChildren()) do
-                                    
-                                    -- Kiểm tra nếu Part đó chứa class TouchTransmitter (hoặc tên là TouchInterest)
                                     if childPart:IsA("BasePart") and (childPart:FindFirstChildWhichIsA("TouchTransmitter") or childPart:FindFirstChild("TouchInterest")) then
-                                        
-                                        -- Fire chính xác vào Part này
                                         firetouchinterest(hrp, childPart, 0)
                                         firetouchinterest(hrp, childPart, 1)
-                                        
-                                        -- Tìm thấy đúng part rồi thì break luôn vòng for nhỏ này để tối ưu, nhảy sang Button tiếp theo
                                         break 
                                     end
                                 end
                             end)
-                            
+                        end
+                    end
+                end
+            end)
+        end
+        
+        -- Logic Auto Touch DisappearParts
+        if autoTouchDisappearParts then
+            pcall(function()
+                local gearTower = workspace:FindFirstChild("Gear Troll Tower 2")
+                if gearTower then
+                    local disappearFolder = gearTower:FindFirstChild("DisappearParts")
+                    local LocalPlayer = game.Players.LocalPlayer
+                    
+                    if disappearFolder and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = LocalPlayer.Character.HumanoidRootPart
+                        
+                        for _, childPart in ipairs(disappearFolder:GetChildren()) do
+                            task.spawn(function()
+                                if childPart:IsA("BasePart") and (childPart:FindFirstChildWhichIsA("TouchTransmitter") or childPart:FindFirstChild("TouchInterest")) then
+                                    firetouchinterest(hrp, childPart, 0)
+                                    firetouchinterest(hrp, childPart, 1)
+                                end
+                            end)
                         end
                     end
                 end
