@@ -1,0 +1,405 @@
+--// Galaxy Update Log Menu --// LocalScript (StarterPlayerScripts / StarterGui) --// Reads update log from a GitHub raw .txt or .json file
+
+local Players = game:GetService("Players") local TweenService = game:GetService("TweenService") local RunService = game:GetService("RunService") local HttpService = game:GetService("HttpService") local UserInputService = game:GetService("UserInputService") local Lighting = game:GetService("Lighting")
+
+local LocalPlayer = Players.LocalPlayer local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+--==================================================== -- CONFIG --==================================================== local CONFIG = { Title = "GALAXY UPDATE LOG", Subtitle = "Premium Cosmic Interface", GithubRawUrl = "https://raw.githubusercontent.com/ShadowDRAGONZ/Menu-load/refs/heads/main/update.txt", AutoRefreshSeconds = 30, AccentColor = Color3.fromRGB(163, 111, 255), AccentColor2 = Color3.fromRGB(72, 214, 255), AccentColor3 = Color3.fromRGB(255, 121, 198), BackgroundColor = Color3.fromRGB(10, 12, 20), PanelColor = Color3.fromRGB(18, 22, 36), TextColor = Color3.fromRGB(245, 247, 255), MutedText = Color3.fromRGB(170, 176, 196), }
+
+--==================================================== -- CLEANUP OLD GUI IF RELOADED --==================================================== local old = PlayerGui:FindFirstChild("GalaxyUpdateLogGui") if old then old:Destroy() end
+
+--==================================================== -- HELPERS --==================================================== local function make(className, props) local inst = Instance.new(className) for k, v in pairs(props or {}) do inst[k] = v end return inst end
+
+local function tween(obj, info, goal) local tw = TweenService:Create(obj, info, goal) tw:Play() return tw end
+
+local function corner(parent, radius) local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, radius or 12) c.Parent = parent return c end
+
+local function stroke(parent, thickness, transparency, color) local s = Instance.new("UIStroke") s.Thickness = thickness or 1 s.Transparency = transparency or 0.35 s.Color = color or CONFIG.AccentColor s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border s.Parent = parent return s end
+
+local function gradient(parent, c1, c2, rotation) local g = Instance.new("UIGradient") g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, c1 or CONFIG.AccentColor), ColorSequenceKeypoint.new(1, c2 or CONFIG.AccentColor2), }) g.Rotation = rotation or 0 g.Parent = parent return g end
+
+local function addGlow(parent) local glow = Instance.new("ImageLabel") glow.Name = "Glow" glow.BackgroundTransparency = 1 glow.Image = "rbxassetid://1316045217" glow.ImageTransparency = 0.55 glow.ScaleType = Enum.ScaleType.Slice glow.SliceCenter = Rect.new(10, 10, 118, 118) glow.Size = UDim2.new(1, 160, 1, 160) glow.Position = UDim2.new(0.5, 0, 0.5, 0) glow.AnchorPoint = Vector2.new(0.5, 0.5) glow.ZIndex = (parent.ZIndex or 1) - 1 glow.Parent = parent return glow end
+
+local function createRipple(parent) local ripple = Instance.new("Frame") ripple = ripple ripple.Name = "Ripple" ripple.BackgroundTransparency = 1 ripple.BorderSizePixel = 0 ripple.Size = UDim2.fromScale(0, 0) ripple.AnchorPoint = Vector2.new(0.5, 0.5) ripple.Position = UDim2.fromScale(0.5, 0.5) ripple.ZIndex = 50 ripple.Parent = parent
+
+corner(ripple, 999)
+
+local s = Instance.new("UIStroke")
+s.Color = CONFIG.AccentColor2
+s.Thickness = 2
+s.Transparency = 0.1
+s.Parent = ripple
+
+task.spawn(function()
+	tween(ripple, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.fromScale(2.2, 2.2),
+		BackgroundTransparency = 1,
+	})
+	task.wait(0.8)
+	if ripple then ripple:Destroy() end
+end)
+
+end
+
+local function safeToString(v) if v == nil then return "" end return tostring(v) end
+
+local function formatDate(ts) if type(ts) == "number" then return os.date("%d %b %Y", ts) end return tostring(ts or "Unknown") end
+
+local function isArray(t) if type(t) ~= "table" then return false end for k, _ in pairs(t) do if type(k) ~= "number" then return false end end return true end
+
+local function parsePlainText(raw) local entries = {} local lines = {}
+
+for line in tostring(raw):gmatch("[^
+
+]+") do line = line:gsub("^%s+", ""):gsub("%s+$", "") if line ~= "" then table.insert(lines, line) end end
+
+if #lines == 0 then
+	return entries
+end
+
+for _, line in ipairs(lines) do
+	-- Support: [1.0.0] - Title | Description
+	local version, title, desc = line:match("^%[(.-)%]%s*%-%s*(.-)%s*%|%s*(.-)%s*$")
+	if version then
+		table.insert(entries, {
+			version = version,
+			title = title,
+			description = desc,
+			date = os.time(),
+			status = "Stable",
+		})
+	else
+		-- Support simple bullet / plain lines
+		local bullet = line:gsub("^%-%s*", ""):gsub("^•%s*", "")
+		table.insert(entries, {
+			version = "Info",
+			title = bullet,
+			description = "",
+			date = os.time(),
+			status = "Stable",
+		})
+	end
+end
+
+return entries
+
+end
+
+local function parseUpdateData(raw) local ok, decoded = pcall(function() return HttpService:JSONDecode(raw) end)
+
+if ok and type(decoded) == "table" then
+	if decoded.entries and type(decoded.entries) == "table" then
+		return decoded.entries, decoded.title, decoded.subtitle
+	end
+	if isArray(decoded) then
+		return decoded, nil, nil
+	end
+end
+
+return parsePlainText(raw), nil, nil
+
+end
+
+local function fetchUpdateData() local ok, result = pcall(function() return HttpService:GetAsync(CONFIG.GithubRawUrl, true) end) if not ok then return nil, "Không tải được dữ liệu từ GitHub" end
+
+local entries, title, subtitle = parseUpdateData(result)
+return {
+	entries = entries or {},
+	title = title,
+	subtitle = subtitle,
+}, nil
+
+end
+
+--==================================================== -- GUI ROOT --==================================================== local gui = make("ScreenGui", { Name = "GalaxyUpdateLogGui", ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = PlayerGui, })
+
+local blur = Instance.new("BlurEffect") blur.Size = 0 blur.Parent = Lighting
+
+local dim = make("Frame", { Name = "Dim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, Size = UDim2.fromScale(1, 1), Parent = gui, })
+
+dim.Visible = true
+
+local main = make("Frame", { Name = "Main", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.55), Size = UDim2.new(0, 560, 0, 390), BackgroundColor3 = CONFIG.BackgroundColor, BackgroundTransparency = 0.06, BorderSizePixel = 0, Parent = gui, }) corner(main, 20) stroke(main, 1.5, 0.35, CONFIG.AccentColor) addGlow(main)
+
+local topGlow = make("Frame", { Name = "TopGlow", Size = UDim2.new(1, 0, 0, 110), BackgroundTransparency = 1, Parent = main, }) local topGrad = make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = topGlow, }) gradient(topGrad, CONFIG.AccentColor, CONFIG.AccentColor3, 0)
+
+local header = make("Frame", { Name = "Header", Size = UDim2.new(1, -20, 0, 68), Position = UDim2.new(0, 10, 0, 10), BackgroundColor3 = CONFIG.PanelColor, BackgroundTransparency = 0.15, BorderSizePixel = 0, Parent = main, }) corner(header, 16) stroke(header, 1, 0.55, CONFIG.AccentColor2) addGlow(header)
+
+local headerIcon = make("TextLabel", { BackgroundTransparency = 1, Size = UDim2.new(0, 56, 0, 56), Position = UDim2.new(0, 10, 0, 4), Font = Enum.Font.GothamBlack, Text = "✦", TextSize = 32, TextColor3 = CONFIG.AccentColor2, Parent = header, })
+
+local title = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 68, 0, 8), Size = UDim2.new(1, -160, 0, 26), Font = Enum.Font.GothamBlack, Text = CONFIG.Title, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.TextColor, Parent = header, })
+
+local subtitle = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 68, 0, 34), Size = UDim2.new(1, -160, 0, 18), Font = Enum.Font.GothamMedium, Text = CONFIG.Subtitle, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.MutedText, Parent = header, })
+
+local updateLabel = make("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -50, 0.5, 0), Size = UDim2.new(0, 240, 0, 20), Font = Enum.Font.GothamSemibold, Text = "Loading update data...", TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = CONFIG.AccentColor2, Parent = header, })
+
+local deleteBtn = make("TextButton", { Name = "Delete", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.new(0, 32, 0, 32), BackgroundColor3 = Color3.fromRGB(255, 80, 100), Text = "×", TextSize = 22, Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = false, Parent = header, }) corner(deleteBtn, 10)
+
+local refreshBtn = make("TextButton", { Name = "Refresh", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -48, 0.5, 0), Size = UDim2.new(0, 32, 0, 32), BackgroundColor3 = Color3.fromRGB(35, 41, 58), Text = "↻", TextSize = 20, Font = Enum.Font.GothamBlack, TextColor3 = CONFIG.TextColor, AutoButtonColor = false, Parent = header, }) corner(refreshBtn, 10)
+
+local leftPanel = make("Frame", { Name = "LeftPanel", Position = UDim2.new(0, 10, 0, 90), Size = UDim2.new(0, 170, 1, -100), BackgroundColor3 = CONFIG.PanelColor, BackgroundTransparency = 0.16, BorderSizePixel = 0, Parent = main, }) corner(leftPanel, 16) stroke(leftPanel, 1, 0.65, CONFIG.AccentColor)
+
+local rightPanel = make("Frame", { Name = "RightPanel", Position = UDim2.new(0, 190, 0, 90), Size = UDim2.new(1, -200, 1, -100), BackgroundColor3 = CONFIG.PanelColor, BackgroundTransparency = 0.16, BorderSizePixel = 0, Parent = main, }) corner(rightPanel, 16) stroke(rightPanel, 1, 0.65, CONFIG.AccentColor2)
+
+local leftTitle = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 10), Size = UDim2.new(1, -24, 0, 20), Font = Enum.Font.GothamBold, Text = "UPDATE FEED", TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.TextColor, Parent = leftPanel, })
+
+local leftSub = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 30), Size = UDim2.new(1, -24, 0, 18), Font = Enum.Font.GothamMedium, Text = "GitHub raw sync", TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.MutedText, Parent = leftPanel, })
+
+local listHolder = make("ScrollingFrame", { Name = "ListHolder", Position = UDim2.new(0, 10, 0, 52), Size = UDim2.new(1, -20, 1, -60), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, ScrollBarImageColor3 = CONFIG.AccentColor2, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = leftPanel, })
+
+local listLayout = Instance.new("UIListLayout") listLayout.Padding = UDim.new(0, 8) listLayout.SortOrder = Enum.SortOrder.LayoutOrder listLayout.Parent = listHolder
+
+local listPadding = Instance.new("UIPadding") listPadding.PaddingTop = UDim.new(0, 2) listPadding.PaddingBottom = UDim.new(0, 2) listPadding.Parent = listHolder
+
+local detailTitle = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 12), Size = UDim2.new(1, -28, 0, 24), Font = Enum.Font.GothamBlack, Text = "Select an update", TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.TextColor, Parent = rightPanel, })
+
+local detailMeta = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 36), Size = UDim2.new(1, -28, 0, 18), Font = Enum.Font.GothamMedium, Text = "Version • Date • Status", TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = CONFIG.MutedText, Parent = rightPanel, })
+
+local detailBox = make("Frame", { Name = "DetailBox", Position = UDim2.new(0, 12, 0, 58), Size = UDim2.new(1, -24, 1, -70), BackgroundColor3 = Color3.fromRGB(12, 16, 28), BackgroundTransparency = 0.05, BorderSizePixel = 0, Parent = rightPanel, }) corner(detailBox, 14) stroke(detailBox, 1, 0.75, CONFIG.AccentColor3)
+
+local detailScroll = make("ScrollingFrame", { Name = "DetailScroll", BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(0, 12, 0, 10), Size = UDim2.new(1, -24, 1, -20), ScrollBarThickness = 4, ScrollBarImageColor3 = CONFIG.AccentColor, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = detailBox, })
+
+local detailLayout = Instance.new("UIListLayout") detailLayout.Padding = UDim.new(0, 8) detailLayout.SortOrder = Enum.SortOrder.LayoutOrder detailLayout.Parent = detailScroll
+
+local detailPad = Instance.new("UIPadding") detailPad.PaddingTop = UDim.new(0, 2) detailPad.PaddingBottom = UDim.new(0, 6) detailPad.Parent = detailScroll
+
+local function autoResizeScroll(scroll, layout) local function update() scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10) end layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(update) update() end
+
+autoResizeScroll(listHolder, listLayout) autoResizeScroll(detailScroll, detailLayout)
+
+--==================================================== -- STARFIELD --==================================================== local starLayer = make("Frame", { Name = "StarLayer", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = gui, })
+
+local stars = {} for i = 1, 24 do local s = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.new(0, math.random(1, 3), 0, math.random(1, 3)), Position = UDim2.new(math.random(), math.random(-20, 20), math.random(), math.random(-20, 20)), Parent = starLayer, }) corner(s, 999) stars[#stars + 1] = { obj = s, base = s.Position, speed = math.random(20, 60) / 100, phase = math.random() * math.pi * 2, } end
+
+RunService.RenderStepped:Connect(function(dt) for _, st in ipairs(stars) do st.phase += dt * st.speed st.obj.Position = UDim2.new(st.base.X.Scale, st.base.X.Offset, st.base.Y.Scale + math.sin(st.phase) * 0.003, st.base.Y.Offset) st.obj.BackgroundTransparency = 0.2 + (math.sin(st.phase * 1.7) + 1) * 0.25 end end)
+
+--==================================================== -- DRAGGABLE WINDOW --==================================================== local dragging = false local dragStart local startPos
+
+local function updateDrag(input) local delta = input.Position - dragStart main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end
+
+header.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true dragStart = input.Position startPos = main.Position input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
+
+header.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateDrag(input) end end)
+
+--==================================================== -- DATA PARSING / UI BUILD --==================================================== local function clearDetails() for _, child in ipairs(detailScroll:GetChildren()) do if child:IsA("GuiObject") and child.Name ~= "UIListLayout" and child.Name ~= "UIPadding" then child:Destroy() end end end
+
+local function addDetailLine(text, isTitle) return make("TextLabel", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, isTitle and 24 or 20), AutomaticSize = Enum.AutomaticSize.Y, Font = isTitle and Enum.Font.GothamBold or Enum.Font.GothamMedium, Text = text, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextSize = isTitle and 15 or 13, TextColor3 = isTitle and CONFIG.TextColor or CONFIG.MutedText, Parent = detailScroll, }) end
+
+local function showUpdate(entry) clearDetails() detailTitle.Text = safeToString(entry.title or entry.version or "Update") detailMeta.Text = string.format("Version %s • %s", safeToString(entry.version or "Unknown"), formatDate(entry.date))
+
+addDetailLine(safeToString(entry.description or entry.desc or entry.message or "No description"), false)
+addDetailLine("", false)
+addDetailLine("Highlights", true)
+
+local bullets = entry.features or entry.bullets or entry.points
+if type(bullets) == "table" and #bullets > 0 then
+	for _, line in ipairs(bullets) do
+		addDetailLine("• " .. safeToString(line), false)
+	end
+else
+	addDetailLine("• Smooth galaxy UI", false)
+	addDetailLine("• GitHub raw sync", false)
+	addDetailLine("• Clean compact layout", false)
+	addDetailLine("• Delete button only", false)
+end
+
+addDetailLine("", false)
+addDetailLine("Status", true)
+addDetailLine(safeToString(entry.status or "Stable • Ready to use"), false)
+
+if entry.notes or entry.note then
+	addDetailLine("", false)
+	addDetailLine("Notes", true)
+	addDetailLine(safeToString(entry.notes or entry.note), false)
+end
+
+end
+
+local function createEntryCard(entry, index) local card = make("TextButton", { Name = "EntryCard", AutoButtonColor = false, BackgroundColor3 = Color3.fromRGB(24, 28, 45), BackgroundTransparency = 0.08, BorderSizePixel = 0, Size = UDim2.new(1, -4, 0, 64), Text = "", Parent = listHolder, }) corner(card, 12) stroke(card, 1, 0.72, CONFIG.AccentColor)
+
+local badge = make("Frame", {
+	BackgroundColor3 = (index % 2 == 0) and CONFIG.AccentColor2 or CONFIG.AccentColor3,
+	Size = UDim2.new(0, 7, 1, -16),
+	Position = UDim2.new(0, 8, 0, 8),
+	BorderSizePixel = 0,
+	Parent = card,
+})
+corner(badge, 999)
+
+make("TextLabel", {
+	BackgroundTransparency = 1,
+	Position = UDim2.new(0, 22, 0, 6),
+	Size = UDim2.new(1, -30, 0, 22),
+	Font = Enum.Font.GothamBold,
+	Text = safeToString(entry.title or entry.version or ("Update " .. index)),
+	TextSize = 14,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextColor3 = CONFIG.TextColor,
+	Parent = card,
+})
+
+make("TextLabel", {
+	BackgroundTransparency = 1,
+	Position = UDim2.new(0, 22, 0, 26),
+	Size = UDim2.new(1, -30, 0, 16),
+	Font = Enum.Font.GothamMedium,
+	Text = safeToString(entry.version or "Info") .. " • " .. formatDate(entry.date),
+	TextSize = 11,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextColor3 = CONFIG.MutedText,
+	Parent = card,
+})
+
+make("TextLabel", {
+	BackgroundTransparency = 1,
+	Position = UDim2.new(0, 22, 0, 42),
+	Size = UDim2.new(1, -34, 0, 14),
+	Font = Enum.Font.Gotham,
+	Text = safeToString(entry.description or entry.desc or entry.message or "Click to view details"),
+	TextSize = 11,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextColor3 = Color3.fromRGB(205, 210, 225),
+	TextTransparency = 0.1,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+	Parent = card,
+})
+
+card.MouseEnter:Connect(function()
+	tween(card, TweenInfo.new(0.15), {BackgroundTransparency = 0})
+end)
+card.MouseLeave:Connect(function()
+	tween(card, TweenInfo.new(0.15), {BackgroundTransparency = 0.08})
+end)
+card.MouseButton1Click:Connect(function()
+	createRipple(card)
+	showUpdate(entry)
+end)
+
+return card
+
+end
+
+local function setStatus(msg, good) updateLabel.Text = msg updateLabel.TextColor3 = good and CONFIG.AccentColor2 or CONFIG.AccentColor3 end
+
+local function fillUpdates(data) for _, child in ipairs(listHolder:GetChildren()) do if child:IsA("TextButton") and child.Name == "EntryCard" then child:Destroy() end end
+
+local entries = data.entries or {}
+if #entries == 0 then
+	setStatus("No update entries found", false)
+	detailTitle.Text = "No data"
+	detailMeta.Text = "GitHub returned empty content"
+	clearDetails()
+	addDetailLine("Không có mục update nào trong file GitHub.", false)
+	addDetailLine("Hãy kiểm tra lại JSON hoặc format plain text.", false)
+	return
+end
+
+setStatus("Synced successfully • " .. tostring(#entries) .. " entries", true)
+	for i, entry in ipairs(entries) do
+		createEntryCard(entry, i)
+	end
+
+	showUpdate(entries[1])
+end
+
+local function refreshData()
+	setStatus("Refreshing from GitHub...", true)
+	local data, err = fetchUpdateData()
+	if not data then
+		setStatus(err or "Refresh failed", false)
+		return
+	end
+	if data.title and data.title ~= "" then
+		title.Text = data.title
+	end
+	if data.subtitle and data.subtitle ~= "" then
+		subtitle.Text = data.subtitle
+	end
+	fillUpdates(data)
+end
+
+--====================================================
+-- OPEN / CLOSE ANIMATION
+--====================================================
+local opened = true
+
+local function setOpen(state)
+	opened = state
+	if state then
+		dim.Visible = true
+		main.Visible = true
+		tween(dim, TweenInfo.new(0.2), {BackgroundTransparency = 0.35})
+		tween(blur, TweenInfo.new(0.2), {Size = 18})
+		tween(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 680, 0, 460),
+			BackgroundTransparency = 0.02,
+		})
+	else
+		tween(dim, TweenInfo.new(0.2), {BackgroundTransparency = 1})
+		tween(blur, TweenInfo.new(0.2), {Size = 0})
+		tween(main, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Size = UDim2.new(0, 640, 0, 430),
+			BackgroundTransparency = 1,
+		})
+		task.delay(0.2, function()
+			if not opened then
+				dim.Visible = false
+				main.Visible = false
+			end
+		end)
+	end
+end
+
+closeBtn.MouseButton1Click:Connect(function()
+	setOpen(false)
+end)
+
+refreshBtn.MouseButton1Click:Connect(function()
+	createRipple(refreshBtn)
+	refreshData()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == CONFIG.OpenKey then
+		setOpen(not opened)
+	end
+end)
+
+--====================================================
+-- AUTO REFRESH
+--====================================================
+task.spawn(function()
+	while task.wait(CONFIG.AutoRefreshSeconds) do
+		if opened then
+			refreshData()
+		end
+	end
+end)
+
+--====================================================
+-- INITIAL ENTRY ANIMATION
+--====================================================
+main.Size = UDim2.new(0, 620, 0, 420)
+main.BackgroundTransparency = 0.08
+dim.BackgroundTransparency = 1
+setOpen(true)
+task.wait(0.15)
+refreshData()
+
+-- Subtle pulse glow on header
+local pulse = 0
+task.spawn(function()
+	while gui.Parent do
+		pulse += 0.02
+		local alpha = 0.6 + math.sin(pulse) * 0.12
+		for _, obj in ipairs({header, leftPanel, rightPanel, main}) do
+			local st = obj:FindFirstChildOfClass("UIStroke")
+			if st then
+				st.Transparency = math.clamp(alpha, 0.3, 0.8)
+			end
+		end
+		wait(0.08)
+	end
+end)
+refreshData()
