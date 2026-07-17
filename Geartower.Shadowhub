@@ -76,7 +76,7 @@ local textName = ""
 local textValue = ""
 
 CommandTab:Input({
-    Title = "Prefix (Dấu lệnh)",
+    Title = "Prefix Command",
     Value = ";", -- Mặc định là dấu chấm phẩy
     Callback = function(val) commandPrefix = val end
 })
