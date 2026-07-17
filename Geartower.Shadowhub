@@ -4,7 +4,7 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- 2. Tạo Menu (Window)
 local Window = WindUI:CreateWindow({
     Title = "Shadow Hub",
-    Icon = "swords", -- Đã xoá lucide-
+    Icon = "swords", 
     Author = "Menu",
     Folder = "AutoFarm", 
     Transparent = true
@@ -15,7 +15,7 @@ local Window = WindUI:CreateWindow({
 -- ============================================================
 local AutoTab = Window:Tab({
     Title = "Auto",
-    Icon = "bot" -- Đã xoá lucide-
+    Icon = "bot" 
 })
 
 local autoClaimCoin = false
@@ -67,7 +67,7 @@ AutoTab:Button({
 -- ============================================================
 local CommandTab = Window:Tab({
     Title = "Use command(no chat hidden)",
-    Icon = "shield-alert" -- Đã xoá lucide-
+    Icon = "shield-alert" 
 })
 
 local textCommand = ""
@@ -114,10 +114,11 @@ CommandTab:Button({
 -- ============================================================
 local TrollTab = Window:Tab({
     Title = "Troll",
-    Icon = "bomb" -- Đã xoá lucide-
+    Icon = "bomb" 
 })
 
 local autoBomb = false
+local autoButtonTroll = false
 
 TrollTab:Toggle({
     Title = "Auto Bomb",
@@ -128,8 +129,17 @@ TrollTab:Toggle({
     end
 })
 
+TrollTab:Toggle({
+    Title = "Auto button troll",
+    Description = "Tự động chạm (Touch) TẤT CẢ nút Troll cùng lúc",
+    Default = false,
+    Callback = function(state)
+        autoButtonTroll = state
+    end
+})
+
 -- ============================================================
--- [TAB 4: PLAYER] (Tab mới)
+-- [TAB 4: PLAYER] 
 -- ============================================================
 local PlayerTab = Window:Tab({
     Title = "Player",
@@ -143,7 +153,6 @@ PlayerTab:Input({
     Title = "Speed",
     Value = "16",
     Callback = function(val) 
-        -- Đổi text thành số, nếu nhập bậy bạ sẽ mặc định là 16
         walkSpeedValue = tonumber(val) or 16 
     end
 })
@@ -188,7 +197,6 @@ PlayerTab:Toggle({
     end
 })
 
--- Event hỗ trợ cho chức năng Infiniti Jump
 game:GetService("UserInputService").JumpRequest:Connect(function()
     if infiniteJump then
         pcall(function()
@@ -282,6 +290,41 @@ task.spawn(function()
                                 LocalPlayer.Character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame
                                 break
                             end
+                        end
+                    end
+                end
+            end)
+        end
+        
+        -- Logic Auto Button Troll (Chạm chính xác Part có TouchTransmitter)
+        if autoButtonTroll then
+            pcall(function()
+                local trollButtons = workspace:FindFirstChild("TrollButtons")
+                local LocalPlayer = game.Players.LocalPlayer
+                
+                if trollButtons and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = LocalPlayer.Character.HumanoidRootPart
+                    
+                    for _, buttonModel in ipairs(trollButtons:GetChildren()) do
+                        if buttonModel:IsA("Model") and (buttonModel.Name == "Button" or buttonModel.Name == "button") then
+                            
+                            task.spawn(function()
+                                -- Duyệt qua từng con (children) trong model Button
+                                for _, childPart in ipairs(buttonModel:GetChildren()) do
+                                    
+                                    -- Kiểm tra nếu Part đó chứa class TouchTransmitter (hoặc tên là TouchInterest)
+                                    if childPart:IsA("BasePart") and (childPart:FindFirstChildWhichIsA("TouchTransmitter") or childPart:FindFirstChild("TouchInterest")) then
+                                        
+                                        -- Fire chính xác vào Part này
+                                        firetouchinterest(hrp, childPart, 0)
+                                        firetouchinterest(hrp, childPart, 1)
+                                        
+                                        -- Tìm thấy đúng part rồi thì break luôn vòng for nhỏ này để tối ưu, nhảy sang Button tiếp theo
+                                        break 
+                                    end
+                                end
+                            end)
+                            
                         end
                     end
                 end
