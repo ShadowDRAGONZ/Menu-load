@@ -1,3 +1,21 @@
-Testbot v0.1
-UPDATE:
-new command 
+{
+  "title": "UPDATE LOG",
+  "subtitle": "Gear Slap Tower Update Log",
+  "entries": [
+    {
+      "id": "update-1",
+      "title": "New Command",
+      "version": "1.0",
+      "date": "2026-07-17",
+      "summary": "Added a new command system.",
+      "description": "This update adds a new command system with better control and cleaner UI.",
+      "status": "Completed",
+      "features": [
+        "Command menu improved",
+        "New UI layout",
+        "More stable loading"
+      ],
+      "notes": "Click the card to see the full details."
+    }
+  ]
+}
