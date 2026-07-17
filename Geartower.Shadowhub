@@ -55,7 +55,7 @@ task.spawn(function()
             local welcomeMessage = string.format("👋 Hello %s, thank you for using Shadow Hub. This is the %d time you have used Shadow Hub! 👑✨", playerName, runCount)
             
             firesignal(notifyEvent.OnClientEvent, {
-                "System",
+                "ShadowHub",
                 welcomeMessage
             })
         end
@@ -118,7 +118,7 @@ AutoTab:Button({
 -- [TAB 2: USE COMMAND]
 -- ============================================================
 local CommandTab = Window:Tab({
-    Title = "Use command",
+    Title = "Use command(Do not chat using hidden commands)",
     Icon = "shield-alert"
 })
 
