@@ -7,9 +7,9 @@
       "title": "Update use command (tab)",
       "version": "1.1",
       "date": "2026-07-17",
-      "summary": "Added Auto Start and fixed the Use Command tab not working.",
-      "description": "This update adds a new command system with better control and cleaner UI.",
-      "status": "Completed",
+      "summary": "fix bug and new function.",
+      "description": "Added Auto Start and fixed the Use Command tab not working.",
+      "status": "Working",
       "features": [
         "Fix bugs",
         "Added Auto Start"
