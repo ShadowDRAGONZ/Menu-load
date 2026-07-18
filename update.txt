@@ -16,20 +16,20 @@
       ],
       "notes": "idk"
     },
-{
-    "id":"update-2",
-    "title":"Add tab Visual",
-    "version":"1.2",
-    "date":"2026-07-18",
-    "summary":"Add new tab",
-    "description":"Add new Tab Visual and Added Inf Coin, Inf Slap",
-    "status":"Completed",
-    "features":[
+    {
+      "id": "update-2",
+      "title": "Add tab Visual",
+      "version": "1.2",
+      "date": "2026-07-18",
+      "summary": "Add new tab",
+      "description": "Add new Tab Visual and Added Inf Coin, Inf Slap",
+      "status": "Completed",
+      "features": [
         "Tab Visual",
         "Inf Coin",
         "Inf Slap"
-    ],
-    "notes":"Fun."
-}
+      ],
+      "notes": "Fun."
+    }
   ]
 }
