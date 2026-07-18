@@ -1,4 +1,3 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ShadowDRAGONZ/Menu-load/refs/heads/main/GearSlapTower.UpdateLog"))()
 -- 1. Load Wind UI Library
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
@@ -55,7 +54,7 @@ task.spawn(function()
             local welcomeMessage = string.format("👋 Hello %s, thank you for using Shadow Hub. This is the %d time you have used Shadow Hub! 👑✨", playerName, runCount)
             
             firesignal(notifyEvent.OnClientEvent, {
-                "ShadowHub",
+                "System",
                 welcomeMessage
             })
         end
@@ -118,7 +117,7 @@ AutoTab:Button({
 -- [TAB 2: USE COMMAND]
 -- ============================================================
 local CommandTab = Window:Tab({
-    Title = "Use command(Do not chat using hidden commands)",
+    Title = "Use command",
     Icon = "shield-alert"
 })
 
@@ -234,7 +233,55 @@ TrollTab:Toggle({
 })
 
 -- ============================================================
--- [TAB 4: PLAYER]
+-- [TAB 4: VISUAL]
+-- ============================================================
+local VisualTab = Window:Tab({
+    Title = "Visual",
+    Icon = "eye"
+})
+
+VisualTab:Button({
+    Title = "Inf Coin",
+    Description = "Change Coins value to 9e99 (Client-side)",
+    Callback = function()
+        pcall(function()
+            local player = game.Players.LocalPlayer
+            
+            -- Check in player
+            if player:FindFirstChild("Coins") then
+                player.Coins.Value = 9e99
+            end
+            
+            -- Check in leaderstats
+            if player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Coins") then
+                player.leaderstats.Coins.Value = 9e99
+            end
+        end)
+    end
+})
+
+VisualTab:Button({
+    Title = "Inf Slap",
+    Description = "Change Slaps value to 9e99 (Client-side)",
+    Callback = function()
+        pcall(function()
+            local player = game.Players.LocalPlayer
+            
+            -- Check in player
+            if player:FindFirstChild("Slaps") then
+                player.Slaps.Value = 9e99
+            end
+            
+            -- Check in leaderstats
+            if player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Slaps") then
+                player.leaderstats.Slaps.Value = 9e99
+            end
+        end)
+    end
+})
+
+-- ============================================================
+-- [TAB 5: PLAYER]
 -- ============================================================
 local PlayerTab = Window:Tab({
     Title = "Player",
@@ -311,7 +358,6 @@ end)
 -- ============================================================
 task.spawn(function()
     while task.wait(0.1) do
-        -- (Logic giữ nguyên không thay đổi)
         if autoSpeed or autoJumpPower then  
             pcall(function()  
                 local player = game.Players.LocalPlayer  
