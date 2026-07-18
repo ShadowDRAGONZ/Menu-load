@@ -15,7 +15,7 @@
         "Added Auto Start"
       ],
       "notes": "idk"
-    }
+    },
 {
     "id":"update-2",
     "title":"Add tab Visual",
