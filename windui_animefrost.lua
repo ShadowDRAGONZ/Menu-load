@@ -323,8 +323,11 @@ local function applyWatermark(window)
     local cfg = CONFIG.Watermark
     if not cfg.Enabled then return end
 
+    -- Lấy MainBar để tìm ra khung cha (khung gốc bao trọn toàn bộ UI)
     local mainBar = window and window.UIElements and window.UIElements.MainBar
-    if not mainBar or mainBar:FindFirstChild("AF_Watermark") then return end
+    local rootFrame = window and window.UIElements and (window.UIElements.Main or (mainBar and mainBar.Parent))
+    
+    if not rootFrame or rootFrame:FindFirstChild("AF_Watermark") then return end
 
     local layer = Instance.new("Frame")
     layer.Name                   = "AF_Watermark"
@@ -332,9 +335,8 @@ local function applyWatermark(window)
     layer.BackgroundTransparency = 1
     layer.ClipsDescendants       = true
     layer.ZIndex                 = 4
-    layer.Parent                 = mainBar
+    layer.Parent                 = rootFrame -- Gắn hẳn vào khung gốc thay vì MainBar
 
-    -- Đã sửa phần code bị đứt đoạn trước đó & tích hợp Logic load Asset
     if cfg.Mode == "Asset" and cfg.AssetId then
         local img = Instance.new("ImageLabel")
         img.Name                   = "AF_AssetImg"
@@ -342,12 +344,11 @@ local function applyWatermark(window)
         img.BackgroundTransparency = 1
         img.Image                  = cfg.AssetId
         img.ImageTransparency      = cfg.Transparency
-        img.ScaleType              = Enum.ScaleType.Crop
-        -- Xóa bỏ hoặc thêm dấu -- để comment dòng TileSize bên dưới
-        -- img.TileSize               = UDim2.fromOffset(cfg.TileSize, cfg.TileSize) 
+        img.ScaleType              = Enum.ScaleType.Crop -- Cắt cúp để bao phủ toàn bộ khung gốc
         img.Parent                 = layer
     end
 end
+
 
 -- 7. LIGHTING & POST-PROCESSING (Phục hồi phần mã lỗi)
 local savedLighting = nil
