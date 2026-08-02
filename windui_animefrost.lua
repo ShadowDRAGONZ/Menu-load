@@ -342,8 +342,9 @@ local function applyWatermark(window)
         img.BackgroundTransparency = 1
         img.Image                  = cfg.AssetId
         img.ImageTransparency      = cfg.Transparency
-        img.ScaleType              = Enum.ScaleType.Tile
-        img.TileSize               = UDim2.fromOffset(cfg.TileSize, cfg.TileSize)
+        img.ScaleType              = Enum.ScaleType.Crop
+        -- Xóa bỏ hoặc thêm dấu -- để comment dòng TileSize bên dưới
+        -- img.TileSize               = UDim2.fromOffset(cfg.TileSize, cfg.TileSize) 
         img.Parent                 = layer
     end
 end
